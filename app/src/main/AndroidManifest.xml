@@ -9,7 +9,7 @@
 
     <application
         android:allowBackup="false"
-        android:usesCleartextTraffic="false"
+        android:usesCleartextTraffic="true"
         android:label="Simulador GPS Pro"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
