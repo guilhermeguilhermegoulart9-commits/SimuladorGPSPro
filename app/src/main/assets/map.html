@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+html,body,#map{height:100%;margin:0;font-family:Arial,sans-serif}
+#panel{position:absolute;z-index:1000;top:10px;left:10px;right:10px;background:#fff;padding:10px;border-radius:10px;box-shadow:0 2px 10px #0003}
+input{box-sizing:border-box;width:100%;padding:10px;margin:3px 0;border:1px solid #bbb;border-radius:7px;font-size:15px}
+.row{display:flex;gap:6px}
+button{padding:10px 12px;border:0;border-radius:7px;background:#1769aa;color:white;font-weight:bold}
+#hint{font-size:12px;color:#444;margin-top:5px}
+#map{padding-top:140px;box-sizing:border-box}
+</style>
+</head>
+<body>
+<div id="panel">
+  <input id="from" placeholder="Local de partida (ex.: Rio Bonito, RJ)">
+  <input id="to" placeholder="Destino (ex.: Centro, Niterói, RJ)">
+  <div class="row">
+    <button onclick="searchPlaces()">Buscar locais</button>
+    <button onclick="makeRoute()">Traçar rota</button>
+  </div>
+  <div id="hint">Digite origem e destino. O mapa exibirá a rota calculada.</div>
+</div>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map').setView([-22.7156,-42.6278],13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19, attribution:'&copy; OpenStreetMap'
+}).addTo(map);
+let startMarker=null,endMarker=null,routeLine=null,simMarker=null,coords=[];
+let startPoint=null,endPoint=null;
+const hint=(s)=>document.getElementById('hint').textContent=s;
+async function geocode(q){
+  const url='https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(q);
+  const r=await fetch(url,{headers:{'Accept-Language':'pt-BR'}});
+  if(!r.ok) throw new Error('Busca indisponível');
+  const a=await r.json();
+  if(!a.length) throw new Error('Local não encontrado: '+q);
+  return [Number(a[0].lat),Number(a[0].lon),a[0].display_name];
+}
+async function searchPlaces(){
+  const a=document.getElementById('from').value.trim(),b=document.getElementById('to').value.trim();
+  if(!a||!b){hint('Preencha partida e destino.');return;}
+  try{
+    hint('Pesquisando endereços...');
+    const p=await geocode(a),q=await geocode(b);
+    startPoint=[p[0],p[1]];endPoint=[q[0],q[1]];
+    if(startMarker)map.removeLayer(startMarker);if(endMarker)map.removeLayer(endMarker);
+    startMarker=L.marker(startPoint).addTo(map).bindPopup('Partida: '+p[2]);
+    endMarker=L.marker(endPoint).addTo(map).bindPopup('Destino: '+q[2]);
+    map.fitBounds([startPoint,endPoint],{padding:[35,35]});
+    hint('Locais encontrados. Toque em Traçar rota.');
+  }catch(e){hint(e.message);}
+}
+async function makeRoute(){
+  if(!startPoint||!endPoint){await searchPlaces();if(!startPoint||!endPoint)return;}
+  try{
+    hint('Calculando rota...');
+    const url=`https://router.project-osrm.org/route/v1/driving/${startPoint[1]},${startPoint[0]};${endPoint[1]},${endPoint[0]}?overview=full&geometries=geojson&steps=true`;
+    const r=await fetch(url);if(!r.ok)throw new Error('Serviço de rotas indisponível');
+    const j=await r.json();if(j.code!=='Ok'||!j.routes.length)throw new Error('Não foi possível calcular a rota.');
+    coords=j.routes[0].geometry.coordinates;
+    if(routeLine)map.removeLayer(routeLine);
+    routeLine=L.geoJSON(j.routes[0].geometry,{style:{color:'#1769aa',weight:6}}).addTo(map);
+    map.fitBounds(routeLine.getBounds(),{padding:[25,25]});
+    if(simMarker)map.removeLayer(simMarker);
+    simMarker=L.circleMarker([coords[0][1],coords[0][0]],{radius:8,color:'#fff',weight:2,fillColor:'#e53935',fillOpacity:1}).addTo(map);
+    AndroidGPS.routeReady(JSON.stringify(coords));
+    hint('Rota pronta. Ajuste a velocidade e toque em INICIAR.');
+  }catch(e){hint(e.message);}
+}
+function setSimulatorProgress(index){
+  if(!coords.length)return;
+  const i=Math.min(index,coords.length-1);
+  if(simMarker)simMarker.setLatLng([coords[i][1],coords[i][0]]);
+}
+</script>
+</body></html>
