@@ -13,3 +13,9 @@ android {
         versionName = "2.0"
     }
 }
+
+tasks.register("verificarProjeto") {
+    doLast {
+        println("Projeto Android encontrado!")
+    }
+}
