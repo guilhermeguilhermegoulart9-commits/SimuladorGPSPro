@@ -27,8 +27,8 @@ jobs:
         with:
           gradle-version: '8.7'
 
-      - name: Configurar Android SDK
-        uses: android-actions/setup-android@v3
+- name: Configurar Android SDK
+run: echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
 
       - name: Instalar SDK 35
         run: yes | sdkmanager --licenses >/dev/null && sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
