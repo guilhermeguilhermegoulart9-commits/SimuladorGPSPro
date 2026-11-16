@@ -4,7 +4,8 @@ name: Gerar APK Android
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -27,11 +28,13 @@ jobs:
         with:
           gradle-version: '8.7'
 
-- name: Configurar Android SDK
-run: echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+      - name: Configurar Android SDK
+        run: echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
 
       - name: Instalar SDK 35
-        run: yes | sdkmanager --licenses >/dev/null && sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Compilar APK
         run: gradle --no-daemon assembleDebug
@@ -42,4 +45,3 @@ run: echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
           name: Simulador-GPS-Pro-APK
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-  
